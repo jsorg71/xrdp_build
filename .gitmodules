@@ -1,0 +1,3 @@
+[submodule "zig/xrdp"]
+	path = zig/xrdp
+	url = git:neutrinolabs/xrdp.git
