@@ -24,13 +24,14 @@
 #define XRDP_LOG_PATH "/tmp"
 #define PACKAGE_VERSION "0.10.80"
 
-#define XRDP_SOCKET_PATH "/tmp/.xrdp"
 #define XRDP_CFG_PATH "/home/jay/xrdpinst/etc/xrdp"
 #define XRDP_PID_PATH "/home/jay/xrdpinst/var/run"
 #define XRDP_SHARE_PATH "/home/jay/xrdpinst/usr/share"
 #define XRDP_MODULE_PATH "/home/jay/xrdpinst/lib/xrdp"
 #define XRDP_SBIN_PATH "/home/jay/xrdpinst/sbin"
 #define XRDP_SYSCONF_PATH "/home/jay/xrdpinst/etc/xrdp"
+
+#define XRDP_SOCKET_ROOT_PATH "\"/tmp\""
 
 #define VERSION_YEAR 2024
 #define SIZEOF_INT 4
