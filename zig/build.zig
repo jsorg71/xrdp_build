@@ -18,6 +18,8 @@ pub fn build(b: *std.Build) void {
     libcommon.defineCMacro("CONFIG_AC_H", "1");
     libcommon.addIncludePath(b.path("."));
     libcommon.addCSourceFiles(.{ .files = libcommon_sources });
+    libcommon.linkSystemLibrary("crypto");
+    libcommon.linkSystemLibrary("ssl");
     // libxrdp
     const libxrdp = b.addSharedLibrary(.{ .name = "xrdp", .target = target, .optimize = optimize });
     libxrdp.linkLibC();
@@ -46,14 +48,10 @@ pub fn build(b: *std.Build) void {
     xrdp.addIncludePath(b.path("xrdp/third_party/tomlc99"));
     xrdp.addIncludePath(b.path("xrdp/libipm"));
     xrdp.addCSourceFiles(.{ .files = xrdp_sources });
-
     xrdp.linkLibrary(libtomlc);
     xrdp.linkLibrary(libcommon);
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
-
-    xrdp.linkSystemLibrary("crypto");
-    xrdp.linkSystemLibrary("ssl");
 
     b.installArtifact(libtomlc);
     b.installArtifact(libcommon);
