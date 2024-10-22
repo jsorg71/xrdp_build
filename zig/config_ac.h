@@ -31,7 +31,11 @@
 #define XRDP_SBIN_PATH "/home/jay/xrdpinst/sbin"
 #define XRDP_SYSCONF_PATH "/home/jay/xrdpinst/etc/xrdp"
 
-#define XRDP_SOCKET_ROOT_PATH "\"/tmp\""
+#define XRDP_SOCKET_ROOT_PATH "/tmp"
+
+#define XRDP_PAMCONF_PATH "/etc/pam"
+
+#define XRDP_LIBEXEC_PATH "/var/bin"
 
 #define VERSION_YEAR 2024
 #define SIZEOF_INT 4

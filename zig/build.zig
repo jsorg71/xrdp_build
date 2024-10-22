@@ -5,14 +5,22 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // tomlc99
-    const libtomlc = b.addStaticLibrary(.{ .name = "tomlc", .target = target, .optimize = optimize });
+    const libtomlc = b.addSharedLibrary(.{
+        .name = "tomlc",
+        .target = target,
+        .optimize = optimize,
+        });
     libtomlc.linkLibC();
     libtomlc.defineCMacro("HAVE_CONFIG_H", "1");
     libtomlc.defineCMacro("CONFIG_AC_H", "1");
     libtomlc.addIncludePath(b.path("."));
     libtomlc.addCSourceFiles(.{ .files = libtomlc_sources });
     // libcommon
-    const libcommon = b.addSharedLibrary(.{ .name = "common", .target = target, .optimize = optimize });
+    const libcommon = b.addSharedLibrary(.{
+        .name = "common",
+        .target = target,
+        .optimize = optimize,
+        });
     libcommon.linkLibC();
     libcommon.defineCMacro("HAVE_CONFIG_H", "1");
     libcommon.defineCMacro("CONFIG_AC_H", "1");
@@ -21,7 +29,11 @@ pub fn build(b: *std.Build) void {
     libcommon.linkSystemLibrary("crypto");
     libcommon.linkSystemLibrary("ssl");
     // libxrdp
-    const libxrdp = b.addSharedLibrary(.{ .name = "xrdp", .target = target, .optimize = optimize });
+    const libxrdp = b.addSharedLibrary(.{
+        .name = "xrdp",
+        .target = target,
+        .optimize = optimize,
+        });
     libxrdp.linkLibC();
     libxrdp.defineCMacro("HAVE_CONFIG_H", "1");
     libxrdp.defineCMacro("CONFIG_AC_H", "1");
@@ -29,7 +41,11 @@ pub fn build(b: *std.Build) void {
     libxrdp.addIncludePath(b.path("xrdp/common"));
     libxrdp.addCSourceFiles(.{ .files = libxrdp_sources });
     // libipm
-    const libipm = b.addSharedLibrary(.{ .name = "ipm", .target = target, .optimize = optimize });
+    const libipm = b.addSharedLibrary(.{
+        .name = "ipm",
+        .target = target,
+        .optimize = optimize,
+        });
     libipm.linkLibC();
     libipm.defineCMacro("HAVE_CONFIG_H", "1");
     libipm.defineCMacro("CONFIG_AC_H", "1");
@@ -37,7 +53,11 @@ pub fn build(b: *std.Build) void {
     libipm.addIncludePath(b.path("xrdp/common"));
     libipm.addCSourceFiles(.{ .files = libipm_sources });
     // xrdp
-    const xrdp = b.addExecutable(.{ .name = "xrdp", .target = target, .optimize = optimize  });
+    const xrdp = b.addExecutable(.{
+        .name = "xrdp",
+        .target = target,
+        .optimize = optimize,
+        });
     xrdp.linkLibC();
     xrdp.defineCMacro("HAVE_CONFIG_H", "1");
     xrdp.defineCMacro("CONFIG_AC_H", "1");
@@ -52,12 +72,77 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libcommon);
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
+    xrdp.linkSystemLibrary("x264");
+    // waitforx
+    const waitforx = b.addExecutable(.{
+        .name = "waitforx",
+        .target = target,
+        .optimize = optimize,
+        });
+    waitforx.linkLibC();
+    waitforx.defineCMacro("HAVE_CONFIG_H", "1");
+    waitforx.defineCMacro("CONFIG_AC_H", "1");
+    waitforx.addIncludePath(b.path("."));
+    waitforx.addIncludePath(b.path("xrdp/common"));
+    waitforx.addIncludePath(b.path("xrdp/sesman/sesexec"));
+    waitforx.addCSourceFiles(.{ .files = waitforx_sources });
+    waitforx.linkLibrary(libcommon);
+    waitforx.linkSystemLibrary("x11");
+    waitforx.linkSystemLibrary("xrandr");
+    // keygen
+    const keygen = b.addExecutable(.{
+        .name = "xrdp-keygen",
+        .target = target,
+        .optimize = optimize,
+        });
+    keygen.linkLibC();
+    keygen.defineCMacro("HAVE_CONFIG_H", "1");
+    keygen.defineCMacro("CONFIG_AC_H", "1");
+    keygen.addIncludePath(b.path("."));
+    keygen.addIncludePath(b.path("xrdp/common"));
+    keygen.addCSourceFiles(.{ .files = keygen_sources });
+    keygen.linkLibrary(libcommon);
+    // libsesman
+    const libsesman = b.addSharedLibrary(.{
+        .name = "sesman",
+        .target = target,
+        .optimize = optimize,
+        });
+    libsesman.linkLibC();
+    libsesman.defineCMacro("HAVE_CONFIG_H", "1");
+    libsesman.defineCMacro("CONFIG_AC_H", "1");
+    libsesman.addIncludePath(b.path("."));
+    libsesman.addIncludePath(b.path("xrdp/common"));
+    libsesman.addIncludePath(b.path("xrdp/libipm"));
+    libsesman.addCSourceFiles(.{ .files = libsesman_sources });
+    libsesman.linkSystemLibrary("pam");
+    // sesman
+    const sesman = b.addExecutable(.{
+        .name = "xrdp-sesman",
+        .target = target,
+        .optimize = optimize,
+        });
+    sesman.linkLibC();
+    sesman.defineCMacro("HAVE_CONFIG_H", "1");
+    sesman.defineCMacro("CONFIG_AC_H", "1");
+    sesman.addIncludePath(b.path("."));
+    sesman.addIncludePath(b.path("xrdp/common"));
+    sesman.addIncludePath(b.path("xrdp/libipm"));
+    sesman.addIncludePath(b.path("xrdp/sesman/libsesman"));
+    sesman.addCSourceFiles(.{ .files = sesman_sources });
+    sesman.linkLibrary(libcommon);
+    sesman.linkLibrary(libsesman);
+    sesman.linkLibrary(libipm);
 
     b.installArtifact(libtomlc);
     b.installArtifact(libcommon);
     b.installArtifact(libxrdp);
     b.installArtifact(libipm);
     b.installArtifact(xrdp);
+    b.installArtifact(waitforx);
+    b.installArtifact(keygen);
+    b.installArtifact(libsesman);
+    b.installArtifact(sesman);
 
 }
 
@@ -137,4 +222,31 @@ const xrdp_sources = &.{
     "xrdp/xrdp/xrdp_tconfig.c",
     //"xrdp/xrdp/xrdpwin.c", Windows file
     "xrdp/xrdp/xrdp_wm.c",
+};
+
+const waitforx_sources = &.{
+    "xrdp/waitforx/waitforx.c",
+};
+
+const keygen_sources = &.{
+    "xrdp/keygen/keygen.c",
+};
+
+const libsesman_sources = &.{
+    "xrdp/sesman/libsesman/sesman_access.c",
+    "xrdp/sesman/libsesman/sesman_clip_restrict.c",
+    "xrdp/sesman/libsesman/sesman_config.c",
+    "xrdp/sesman/libsesman/verify_user_pam.c",
+};
+
+const sesman_sources = &.{
+    "xrdp/sesman/eicp_process.c",
+    "xrdp/sesman/ercp_process.c",
+    "xrdp/sesman/lock_uds.c",
+    "xrdp/sesman/pre_session_list.c",
+    "xrdp/sesman/scp_process.c",
+    "xrdp/sesman/sesexec_control.c",
+    "xrdp/sesman/sesman.c",
+    "xrdp/sesman/session_list.c",
+    "xrdp/sesman/sig.c",
 };
