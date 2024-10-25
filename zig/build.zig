@@ -1,7 +1,11 @@
-
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    // build options
+    var do_strip: bool = false;
+    if (b.option(bool, "strip", "strip the executabes") orelse false) {
+        do_strip = true;
+    }
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // tomlc99
@@ -9,7 +13,8 @@ pub fn build(b: *std.Build) void {
         .name = "tomlc",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     libtomlc.linkLibC();
     libtomlc.defineCMacro("HAVE_CONFIG_H", "1");
     libtomlc.defineCMacro("CONFIG_AC_H", "1");
@@ -20,7 +25,8 @@ pub fn build(b: *std.Build) void {
         .name = "common",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     libcommon.linkLibC();
     libcommon.defineCMacro("HAVE_CONFIG_H", "1");
     libcommon.defineCMacro("CONFIG_AC_H", "1");
@@ -33,7 +39,8 @@ pub fn build(b: *std.Build) void {
         .name = "xrdp",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     libxrdp.linkLibC();
     libxrdp.defineCMacro("HAVE_CONFIG_H", "1");
     libxrdp.defineCMacro("CONFIG_AC_H", "1");
@@ -45,22 +52,54 @@ pub fn build(b: *std.Build) void {
         .name = "ipm",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     libipm.linkLibC();
     libipm.defineCMacro("HAVE_CONFIG_H", "1");
     libipm.defineCMacro("CONFIG_AC_H", "1");
     libipm.addIncludePath(b.path("."));
     libipm.addIncludePath(b.path("xrdp/common"));
     libipm.addCSourceFiles(.{ .files = libipm_sources });
+    // librfxencode
+    const librfxencode = b.addStaticLibrary(.{
+        .name = "rfxencode",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    librfxencode.linkLibC();
+    librfxencode.defineCMacro("HAVE_CONFIG_H", "1");
+    librfxencode.defineCMacro("CONFIG_AC_H", "1");
+    librfxencode.addIncludePath(b.path("."));
+    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src"));
+    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/include"));
+    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
+    librfxencode.addCSourceFiles(.{ .files = librfxencode_sources });
+    if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
+        librfxencode.defineCMacro("RFX_USE_ACCEL_X86", "1");
+        addNasmFiles(librfxencode, .{
+            .flags = librfxencode_asm_x86_flags,
+            .files = librfxencode_asm_x86_sources,
+        });
+    } else if (target.result.cpu.arch == std.Target.Cpu.Arch.x86_64) {
+        librfxencode.defineCMacro("RFX_USE_ACCEL_AMD64", "1");
+        addNasmFiles(librfxencode, .{
+            .flags = librfxencode_asm_x86_64_flags,
+            .files = librfxencode_asm_x86_64_sources,
+        });
+    } else if (target.result.cpu.arch == std.Target.Cpu.Arch.arm) {
+    }
     // xrdp
     const xrdp = b.addExecutable(.{
         .name = "xrdp",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     xrdp.linkLibC();
     xrdp.defineCMacro("HAVE_CONFIG_H", "1");
     xrdp.defineCMacro("CONFIG_AC_H", "1");
+    xrdp.defineCMacro("XRDP_RFXCODEC", "1");
     xrdp.addIncludePath(b.path("."));
     xrdp.addIncludePath(b.path("xrdp/common"));
     xrdp.addIncludePath(b.path("xrdp/libxrdp"));
@@ -72,13 +111,15 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libcommon);
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
+    xrdp.linkLibrary(librfxencode);
     xrdp.linkSystemLibrary("x264");
     // waitforx
     const waitforx = b.addExecutable(.{
         .name = "waitforx",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     waitforx.linkLibC();
     waitforx.defineCMacro("HAVE_CONFIG_H", "1");
     waitforx.defineCMacro("CONFIG_AC_H", "1");
@@ -94,7 +135,8 @@ pub fn build(b: *std.Build) void {
         .name = "xrdp-keygen",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     keygen.linkLibC();
     keygen.defineCMacro("HAVE_CONFIG_H", "1");
     keygen.defineCMacro("CONFIG_AC_H", "1");
@@ -107,7 +149,8 @@ pub fn build(b: *std.Build) void {
         .name = "sesman",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     libsesman.linkLibC();
     libsesman.defineCMacro("HAVE_CONFIG_H", "1");
     libsesman.defineCMacro("CONFIG_AC_H", "1");
@@ -121,7 +164,8 @@ pub fn build(b: *std.Build) void {
         .name = "xrdp-sesman",
         .target = target,
         .optimize = optimize,
-        });
+        .strip = do_strip,
+    });
     sesman.linkLibC();
     sesman.defineCMacro("HAVE_CONFIG_H", "1");
     sesman.defineCMacro("CONFIG_AC_H", "1");
@@ -138,12 +182,32 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(libcommon);
     b.installArtifact(libxrdp);
     b.installArtifact(libipm);
+    b.installArtifact(librfxencode);
     b.installArtifact(xrdp);
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
     b.installArtifact(libsesman);
     b.installArtifact(sesman);
 
+}
+
+const AddNasmFilesOptions = struct {
+    files: []const []const u8,
+    flags: []const []const u8 = &.{},
+};
+
+fn addNasmFiles(compile: *std.Build.Step.Compile, options: AddNasmFilesOptions) void {
+    const b = compile.step.owner;
+    //const root = options.root orelse b.path("");
+    for (options.files) |file| {
+        const src_file = file;
+        const file_stem = std.mem.sliceTo(file, '.');
+        const nasm = b.addSystemCommand(&.{"yasm"});
+        nasm.addArgs(options.flags);
+        const obj = nasm.addPrefixedOutputFileArg("-o", b.fmt("{s}.o", .{file_stem}));
+        nasm.addFileArg(b.path(src_file));
+        compile.addObjectFile(obj);
+    }
 }
 
 const libtomlc_sources = &.{
@@ -169,7 +233,7 @@ const libcommon_sources = &.{
     "xrdp/common/ssl_calls.c",
     "xrdp/common/string_calls.c",
     "xrdp/common/thread_calls.c",
-    "xrdp/common/trans.c"
+    "xrdp/common/trans.c",
 };
 
 const libxrdp_sources = &.{
@@ -198,6 +262,47 @@ const libipm_sources = &.{
     "xrdp/libipm/libipm_send.c",
     "xrdp/libipm/scp_application_types.c",
     "xrdp/libipm/scp.c",
+};
+
+const librfxencode_sources = &.{
+    "xrdp/librfxcodec/src/rfxencode.c",
+    "xrdp/librfxcodec/src/rfxencode_rgb_to_yuv.c",
+    "xrdp/librfxcodec/src/rfxencode_dwt_shift_rem.c",
+    "xrdp/librfxcodec/src/rfxencode_compose.c",
+    "xrdp/librfxcodec/src/rfxencode_tile.c",
+    "xrdp/librfxcodec/src/rfxencode_rlgr1.c",
+    "xrdp/librfxcodec/src/rfxencode_rlgr3.c",
+    "xrdp/librfxcodec/src/rfxencode_differential.c",
+    "xrdp/librfxcodec/src/rfxencode_diff_rlgr1.c",
+    "xrdp/librfxcodec/src/rfxencode_diff_rlgr3.c",
+    "xrdp/librfxcodec/src/rfxencode_quantization.c",
+    "xrdp/librfxcodec/src/rfxencode_dwt.c",
+    "xrdp/librfxcodec/src/rfxencode_alpha.c",
+    // sse2
+    "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_sse2.c",
+    "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_sse2.c",
+    // amd64
+    "xrdp/librfxcodec/src/amd64/rfxencode_tile_amd64.c",
+};
+
+const librfxencode_asm_x86_flags = &.{
+    "-felf", "-DELF", "-D__x86__", "-Ixrdp/librfxcodec/src",
+};
+
+const librfxencode_asm_x86_sources = &.{
+    "xrdp/librfxcodec/src/amd64/cpuid_x86.asm",
+    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_x86_sse2.asm",
+    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_x86_sse41.asm",
+};
+
+const librfxencode_asm_x86_64_flags = &.{
+    "-felf64", "-DELF", "-D__x86_64__", "-Ixrdp/librfxcodec/src",
+};
+
+const librfxencode_asm_x86_64_sources = &.{
+    "xrdp/librfxcodec/src/amd64/cpuid_amd64.asm",
+    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_amd64_sse2.asm",
+    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_amd64_sse41.asm",
 };
 
 const xrdp_sources = &.{
