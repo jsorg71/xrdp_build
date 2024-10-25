@@ -113,6 +113,14 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libipm);
     xrdp.linkLibrary(librfxencode);
     xrdp.linkSystemLibrary("x264");
+    // install xrdp in sbin
+    const xrdp_install = b.addInstallArtifact(xrdp, .{
+        .dest_dir = .{
+            .override = .{ .custom = "./sbin" },
+        },
+    });
+    //b.default_step.dependOn(&xrdp_install.step);
+    b.getInstallStep().dependOn(&xrdp_install.step);
     // waitforx
     const waitforx = b.addExecutable(.{
         .name = "waitforx",
@@ -183,7 +191,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(libxrdp);
     b.installArtifact(libipm);
     b.installArtifact(librfxencode);
-    b.installArtifact(xrdp);
+    //b.installArtifact(xrdp);
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
     b.installArtifact(libsesman);
