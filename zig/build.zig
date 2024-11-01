@@ -2,8 +2,16 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     // build options
-    const do_strip = b.option(bool, "strip", "Strip the executabes") orelse false;
-    const use_librfxcodec = b.option(bool, "enable-rfxcodec", "Use included librfxcodec library (default: yes)") orelse true;
+    const do_strip = b.option(
+        bool,
+        "strip",
+        "Strip the executabes"
+    ) orelse false;
+    const use_librfxcodec = b.option(
+        bool,
+        "enable-rfxcodec",
+        "Use included librfxcodec library (default: yes)"
+    ) orelse true;
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // tomlc99
@@ -116,14 +124,6 @@ pub fn build(b: *std.Build) void {
         xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
         xrdp.linkLibrary(librfxencode);
     }
-    // install xrdp in sbin
-    const xrdp_install = b.addInstallArtifact(xrdp, .{
-        .dest_dir = .{
-            .override = .{ .custom = "./sbin" },
-        },
-    });
-    //b.default_step.dependOn(&xrdp_install.step);
-    b.getInstallStep().dependOn(&xrdp_install.step);
     // waitforx
     const waitforx = b.addExecutable(.{
         .name = "waitforx",
@@ -188,7 +188,7 @@ pub fn build(b: *std.Build) void {
     sesman.linkLibrary(libcommon);
     sesman.linkLibrary(libsesman);
     sesman.linkLibrary(libipm);
-
+    // lib
     b.installArtifact(libtomlc);
     b.installArtifact(libcommon);
     b.installArtifact(libxrdp);
@@ -196,22 +196,32 @@ pub fn build(b: *std.Build) void {
     if (use_librfxcodec) {
         b.installArtifact(librfxencode);
     }
-    //b.installArtifact(xrdp);
+    b.installArtifact(libsesman);
+    // bin
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
-    b.installArtifact(libsesman);
-    b.installArtifact(sesman);
+    // sbin
+    installSbinArtifact(b, xrdp);
+    installSbinArtifact(b, sesman);
+}
 
+fn installSbinArtifact(b: *std.Build,
+    compile: *std.Build.Step.Compile) void {
+    const install = b.addInstallArtifact(compile, .{
+        .dest_dir = .{
+            .override = .{ .custom = "sbin" },
+        },
+    });
+    b.getInstallStep().dependOn(&install.step);
 }
 
 const AddNasmFilesOptions = struct {
     files: []const []const u8,
-    flags: []const []const u8 = &.{},
+    flags: []const []const u8,
 };
 
 fn addNasmFiles(compile: *std.Build.Step.Compile, options: AddNasmFilesOptions) void {
     const b = compile.step.owner;
-    //const root = options.root orelse b.path("");
     for (options.files) |file| {
         const src_file = file;
         const file_stem = std.mem.sliceTo(file, '.');
@@ -225,9 +235,6 @@ fn addNasmFiles(compile: *std.Build.Step.Compile, options: AddNasmFilesOptions) 
 
 const libtomlc_sources = &.{
     "xrdp/third_party/tomlc99/toml.c",
-    //"xrdp/third_party/tomlc99/toml_cat.c",",
-    //"xrdp/third_party/tomlc99/toml_json.c",",
-    //"xrdp/third_party/tomlc99/toml_sample.c",
 };
 
 const libcommon_sources = &.{
@@ -241,7 +248,6 @@ const libcommon_sources = &.{
     "xrdp/common/os_calls.c",
     "xrdp/common/parse.c",
     "xrdp/common/pixman-region16.c",
-    //"xrdp/common/pixman-region.c", do not compile directly
     "xrdp/common/scancode.c",
     "xrdp/common/ssl_calls.c",
     "xrdp/common/string_calls.c",
@@ -264,7 +270,6 @@ const libxrdp_sources = &.{
     "xrdp/libxrdp/xrdp_orders_rail.c",
     "xrdp/libxrdp/xrdp_rdp.c",
     "xrdp/libxrdp/xrdp_sec.c",
-    //"xrdp/libxrdp/xrdp_surface.c", not used
 };
 
 const libipm_sources = &.{
@@ -338,7 +343,6 @@ const xrdp_sources = &.{
     "xrdp/xrdp/xrdp_process.c",
     "xrdp/xrdp/xrdp_region.c",
     "xrdp/xrdp/xrdp_tconfig.c",
-    //"xrdp/xrdp/xrdpwin.c", Windows file
     "xrdp/xrdp/xrdp_wm.c",
 };
 
