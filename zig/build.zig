@@ -2,10 +2,8 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     // build options
-    var do_strip: bool = false;
-    if (b.option(bool, "strip", "strip the executabes") orelse false) {
-        do_strip = true;
-    }
+    const do_strip = b.option(bool, "strip", "Strip the executabes") orelse false;
+    const use_librfxcodec = b.option(bool, "enable-rfxcodec", "Use included librfxcodec library (default: yes)") orelse true;
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // tomlc99
@@ -62,32 +60,34 @@ pub fn build(b: *std.Build) void {
     libipm.addCSourceFiles(.{ .files = libipm_sources });
     // librfxencode
     const librfxencode = b.addStaticLibrary(.{
-        .name = "rfxencode",
-        .target = target,
-        .optimize = optimize,
-        .strip = do_strip,
-    });
-    librfxencode.linkLibC();
-    librfxencode.defineCMacro("HAVE_CONFIG_H", "1");
-    librfxencode.defineCMacro("CONFIG_AC_H", "1");
-    librfxencode.addIncludePath(b.path("."));
-    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src"));
-    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/include"));
-    librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
-    librfxencode.addCSourceFiles(.{ .files = librfxencode_sources });
-    if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
-        librfxencode.defineCMacro("RFX_USE_ACCEL_X86", "1");
-        addNasmFiles(librfxencode, .{
-            .flags = librfxencode_asm_x86_flags,
-            .files = librfxencode_asm_x86_sources,
+            .name = "rfxencode",
+            .target = target,
+            .optimize = optimize,
+            .strip = do_strip,
         });
-    } else if (target.result.cpu.arch == std.Target.Cpu.Arch.x86_64) {
-        librfxencode.defineCMacro("RFX_USE_ACCEL_AMD64", "1");
-        addNasmFiles(librfxencode, .{
-            .flags = librfxencode_asm_x86_64_flags,
-            .files = librfxencode_asm_x86_64_sources,
-        });
-    } else if (target.result.cpu.arch == std.Target.Cpu.Arch.arm) {
+    if (use_librfxcodec) {
+        librfxencode.linkLibC();
+        librfxencode.defineCMacro("HAVE_CONFIG_H", "1");
+        librfxencode.defineCMacro("CONFIG_AC_H", "1");
+        librfxencode.addIncludePath(b.path("."));
+        librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src"));
+        librfxencode.addIncludePath(b.path("xrdp/librfxcodec/include"));
+        librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
+        librfxencode.addCSourceFiles(.{ .files = librfxencode_sources });
+        if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
+            librfxencode.defineCMacro("RFX_USE_ACCEL_X86", "1");
+            addNasmFiles(librfxencode, .{
+                .flags = librfxencode_asm_x86_flags,
+                .files = librfxencode_asm_x86_sources,
+            });
+        } else if (target.result.cpu.arch == std.Target.Cpu.Arch.x86_64) {
+            librfxencode.defineCMacro("RFX_USE_ACCEL_AMD64", "1");
+            addNasmFiles(librfxencode, .{
+                .flags = librfxencode_asm_x86_64_flags,
+                .files = librfxencode_asm_x86_64_sources,
+            });
+        } else if (target.result.cpu.arch == std.Target.Cpu.Arch.arm) {
+        }
     }
     // xrdp
     const xrdp = b.addExecutable(.{
@@ -99,7 +99,6 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibC();
     xrdp.defineCMacro("HAVE_CONFIG_H", "1");
     xrdp.defineCMacro("CONFIG_AC_H", "1");
-    xrdp.defineCMacro("XRDP_RFXCODEC", "1");
     xrdp.addIncludePath(b.path("."));
     xrdp.addIncludePath(b.path("xrdp/common"));
     xrdp.addIncludePath(b.path("xrdp/libxrdp"));
@@ -111,8 +110,12 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libcommon);
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
-    xrdp.linkLibrary(librfxencode);
     xrdp.linkSystemLibrary("x264");
+    if (use_librfxcodec) {
+        xrdp.defineCMacro("XRDP_RFXCODEC", "1");
+        xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
+        xrdp.linkLibrary(librfxencode);
+    }
     // install xrdp in sbin
     const xrdp_install = b.addInstallArtifact(xrdp, .{
         .dest_dir = .{
@@ -190,7 +193,9 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(libcommon);
     b.installArtifact(libxrdp);
     b.installArtifact(libipm);
-    b.installArtifact(librfxencode);
+    if (use_librfxcodec) {
+        b.installArtifact(librfxencode);
+    }
     //b.installArtifact(xrdp);
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
