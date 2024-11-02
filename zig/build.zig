@@ -40,6 +40,7 @@ pub fn build(b: *std.Build) void {
     libcommon.addCSourceFiles(.{ .files = libcommon_sources });
     libcommon.linkSystemLibrary("crypto");
     libcommon.linkSystemLibrary("ssl");
+    libcommon.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     // libxrdp
     const libxrdp = b.addSharedLibrary(.{
         .name = "xrdp",
@@ -80,15 +81,20 @@ pub fn build(b: *std.Build) void {
         librfxencode.addIncludePath(b.path("."));
         librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src"));
         librfxencode.addIncludePath(b.path("xrdp/librfxcodec/include"));
-        librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
         librfxencode.addCSourceFiles(.{ .files = librfxencode_sources });
         if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
+            librfxencode.addCSourceFiles(.{ .files = librfxencode_sse2_sources });
+            librfxencode.addCSourceFiles(.{ .files = librfxencode_x86_sources });
+            librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
             librfxencode.defineCMacro("RFX_USE_ACCEL_X86", "1");
             addNasmFiles(librfxencode, .{
                 .flags = librfxencode_asm_x86_flags,
                 .files = librfxencode_asm_x86_sources,
             });
         } else if (target.result.cpu.arch == std.Target.Cpu.Arch.x86_64) {
+            librfxencode.addCSourceFiles(.{ .files = librfxencode_sse2_sources });
+            librfxencode.addCSourceFiles(.{ .files = librfxencode_amd64_sources });
+            librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/sse2"));
             librfxencode.defineCMacro("RFX_USE_ACCEL_AMD64", "1");
             addNasmFiles(librfxencode, .{
                 .flags = librfxencode_asm_x86_64_flags,
@@ -119,6 +125,7 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
     xrdp.linkSystemLibrary("x264");
+    xrdp.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     if (use_librfxcodec) {
         xrdp.defineCMacro("XRDP_RFXCODEC", "1");
         xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
@@ -141,6 +148,7 @@ pub fn build(b: *std.Build) void {
     waitforx.linkLibrary(libcommon);
     waitforx.linkSystemLibrary("x11");
     waitforx.linkSystemLibrary("xrandr");
+    waitforx.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     // keygen
     const keygen = b.addExecutable(.{
         .name = "xrdp-keygen",
@@ -155,6 +163,7 @@ pub fn build(b: *std.Build) void {
     keygen.addIncludePath(b.path("xrdp/common"));
     keygen.addCSourceFiles(.{ .files = keygen_sources });
     keygen.linkLibrary(libcommon);
+    keygen.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     // libsesman
     const libsesman = b.addSharedLibrary(.{
         .name = "sesman",
@@ -170,6 +179,7 @@ pub fn build(b: *std.Build) void {
     libsesman.addIncludePath(b.path("xrdp/libipm"));
     libsesman.addCSourceFiles(.{ .files = libsesman_sources });
     libsesman.linkSystemLibrary("pam");
+    libsesman.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     // sesman
     const sesman = b.addExecutable(.{
         .name = "xrdp-sesman",
@@ -296,10 +306,18 @@ const librfxencode_sources = &.{
     "xrdp/librfxcodec/src/rfxencode_quantization.c",
     "xrdp/librfxcodec/src/rfxencode_dwt.c",
     "xrdp/librfxcodec/src/rfxencode_alpha.c",
-    // sse2
+};
+
+const librfxencode_sse2_sources = &.{
     "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_sse2.c",
     "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_sse2.c",
-    // amd64
+};
+
+const librfxencode_x86_sources = &.{
+    "xrdp/librfxcodec/src/x86/rfxencode_tile_x86.c",
+};
+
+const librfxencode_amd64_sources = &.{
     "xrdp/librfxcodec/src/amd64/rfxencode_tile_amd64.c",
 };
 
@@ -308,9 +326,9 @@ const librfxencode_asm_x86_flags = &.{
 };
 
 const librfxencode_asm_x86_sources = &.{
-    "xrdp/librfxcodec/src/amd64/cpuid_x86.asm",
-    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_x86_sse2.asm",
-    "xrdp/librfxcodec/src/amd64/rfxcodec_encode_dwt_shift_x86_sse41.asm",
+    "xrdp/librfxcodec/src/x86/cpuid_x86.asm",
+    "xrdp/librfxcodec/src/x86/rfxcodec_encode_dwt_shift_x86_sse2.asm",
+    "xrdp/librfxcodec/src/x86/rfxcodec_encode_dwt_shift_x86_sse41.asm",
 };
 
 const librfxencode_asm_x86_64_flags = &.{
