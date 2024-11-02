@@ -100,7 +100,7 @@ pub fn build(b: *std.Build) void {
                 .flags = librfxencode_asm_x86_64_flags,
                 .files = librfxencode_asm_x86_64_sources,
             });
-        } else if (target.result.cpu.arch == std.Target.Cpu.Arch.arm) {
+        } else if (target.result.cpu.arch == std.Target.Cpu.Arch.aarch64) {
             librfxencode.addCSourceFiles(.{ .files = librfxencode_neon_sources });
             librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/neon"));
             librfxencode.defineCMacro("RFX_USE_ACCEL_ARM64", "1");
@@ -318,14 +318,14 @@ const librfxencode_sources = &.{
     "xrdp/librfxcodec/src/rfxencode_alpha.c",
 };
 
+const librfxencode_neon_sources = &.{
+    "xrdp/librfxcodec/src/neon/rfxencode_diff_count_neon.c",
+    "xrdp/librfxcodec/src/neon/rfxencode_dwt_shift_rem_neon.c",
+};
+
 const librfxencode_sse2_sources = &.{
     "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_sse2.c",
     "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_sse2.c",
-};
-
-const librfxencode_neon_sources = &.{
-    "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_neon.c",
-    "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_neon.c",
 };
 
 const librfxencode_x86_sources = &.{
