@@ -40,7 +40,7 @@ pub fn build(b: *std.Build) void {
     libcommon.addCSourceFiles(.{ .files = libcommon_sources });
     libcommon.linkSystemLibrary("crypto");
     libcommon.linkSystemLibrary("ssl");
-    libcommon.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
+    setExtraLibraryPaths(libcommon, target);
     // libxrdp
     const libxrdp = b.addSharedLibrary(.{
         .name = "xrdp",
@@ -125,7 +125,7 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libxrdp);
     xrdp.linkLibrary(libipm);
     xrdp.linkSystemLibrary("x264");
-    xrdp.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
+    setExtraLibraryPaths(xrdp, target);
     if (use_librfxcodec) {
         xrdp.defineCMacro("XRDP_RFXCODEC", "1");
         xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
@@ -148,7 +148,7 @@ pub fn build(b: *std.Build) void {
     waitforx.linkLibrary(libcommon);
     waitforx.linkSystemLibrary("x11");
     waitforx.linkSystemLibrary("xrandr");
-    waitforx.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
+    setExtraLibraryPaths(waitforx, target);
     // keygen
     const keygen = b.addExecutable(.{
         .name = "xrdp-keygen",
@@ -163,7 +163,6 @@ pub fn build(b: *std.Build) void {
     keygen.addIncludePath(b.path("xrdp/common"));
     keygen.addCSourceFiles(.{ .files = keygen_sources });
     keygen.linkLibrary(libcommon);
-    keygen.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     // libsesman
     const libsesman = b.addSharedLibrary(.{
         .name = "sesman",
@@ -179,7 +178,7 @@ pub fn build(b: *std.Build) void {
     libsesman.addIncludePath(b.path("xrdp/libipm"));
     libsesman.addCSourceFiles(.{ .files = libsesman_sources });
     libsesman.linkSystemLibrary("pam");
-    libsesman.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
+    setExtraLibraryPaths(libsesman, target);
     // sesman
     const sesman = b.addExecutable(.{
         .name = "xrdp-sesman",
@@ -240,6 +239,12 @@ fn addNasmFiles(compile: *std.Build.Step.Compile, options: AddNasmFilesOptions) 
         const obj = nasm.addPrefixedOutputFileArg("-o", b.fmt("{s}.o", .{file_stem}));
         nasm.addFileArg(b.path(src_file));
         compile.addObjectFile(obj);
+    }
+}
+
+fn setExtraLibraryPaths(compile: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
+    if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
+        compile.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     }
 }
 
