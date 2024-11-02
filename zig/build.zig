@@ -101,6 +101,9 @@ pub fn build(b: *std.Build) void {
                 .files = librfxencode_asm_x86_64_sources,
             });
         } else if (target.result.cpu.arch == std.Target.Cpu.Arch.arm) {
+            librfxencode.addCSourceFiles(.{ .files = librfxencode_neon_sources });
+            librfxencode.addIncludePath(b.path("xrdp/librfxcodec/src/neon"));
+            librfxencode.defineCMacro("RFX_USE_ACCEL_ARM64", "1");
         }
     }
     // xrdp
@@ -244,6 +247,8 @@ fn addNasmFiles(compile: *std.Build.Step.Compile, options: AddNasmFilesOptions) 
 
 fn setExtraLibraryPaths(compile: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
     if (target.result.cpu.arch == std.Target.Cpu.Arch.x86) {
+        // zig seems to use /usr/lib/x86-linux-gnu instead
+        // of /usr/lib/i386-linux-gnu
         compile.addLibraryPath(.{.cwd_relative = "/usr/lib/i386-linux-gnu/"});
     }
 }
@@ -316,6 +321,11 @@ const librfxencode_sources = &.{
 const librfxencode_sse2_sources = &.{
     "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_sse2.c",
     "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_sse2.c",
+};
+
+const librfxencode_neon_sources = &.{
+    "xrdp/librfxcodec/src/sse2/rfxencode_diff_count_neon.c",
+    "xrdp/librfxcodec/src/sse2/rfxencode_dwt_shift_rem_neon.c",
 };
 
 const librfxencode_x86_sources = &.{
