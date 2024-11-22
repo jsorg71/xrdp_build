@@ -7,6 +7,11 @@ pub fn build(b: *std.Build) void {
         "strip",
         "Strip the executabes"
     ) orelse false;
+    const use_libpainter = b.option(
+        bool,
+        "enable-painter",
+        "Use included libpainter library (default: yes)"
+    ) orelse true;
     const use_librfxcodec = b.option(
         bool,
         "enable-rfxcodec",
@@ -67,6 +72,22 @@ pub fn build(b: *std.Build) void {
     libipm.addIncludePath(b.path("."));
     libipm.addIncludePath(b.path("xrdp/common"));
     libipm.addCSourceFiles(.{ .files = libipm_sources });
+    // libpainter
+    const libpainter = b.addStaticLibrary(.{
+            .name = "painter",
+            .target = target,
+            .optimize = optimize,
+            .strip = do_strip,
+        });
+    if (use_libpainter) {
+        libpainter.linkLibC();
+        libpainter.defineCMacro("HAVE_CONFIG_H", "1");
+        libpainter.defineCMacro("CONFIG_AC_H", "1");
+        libpainter.addIncludePath(b.path("."));
+        libpainter.addIncludePath(b.path("xrdp/libpainter/src"));
+        libpainter.addIncludePath(b.path("xrdp/libpainter/include"));
+        libpainter.addCSourceFiles(.{ .files = libpainter_sources });
+    }
     // librfxencode
     const librfxencode = b.addStaticLibrary(.{
             .name = "rfxencode",
@@ -129,6 +150,11 @@ pub fn build(b: *std.Build) void {
     xrdp.linkLibrary(libipm);
     xrdp.linkSystemLibrary("x264");
     setExtraLibraryPaths(xrdp, target);
+    if (use_libpainter) {
+        xrdp.defineCMacro("XRDP_PAINTER", "1");
+        xrdp.addIncludePath(b.path("xrdp/libpainter/include"));
+        xrdp.linkLibrary(libpainter);
+    }
     if (use_librfxcodec) {
         xrdp.defineCMacro("XRDP_RFXCODEC", "1");
         xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
@@ -200,15 +226,18 @@ pub fn build(b: *std.Build) void {
     sesman.linkLibrary(libcommon);
     sesman.linkLibrary(libsesman);
     sesman.linkLibrary(libipm);
-    // lib
-    b.installArtifact(libtomlc);
-    b.installArtifact(libcommon);
-    b.installArtifact(libxrdp);
-    b.installArtifact(libipm);
+    // lib/xrdp
+    installLibXrdpArtifact(b, libtomlc);
+    installLibXrdpArtifact(b, libcommon);
+    installLibXrdpArtifact(b, libxrdp);
+    installLibXrdpArtifact(b, libipm);
+    installLibXrdpArtifact(b, libsesman);
+    if (use_libpainter) {
+        b.installArtifact(libpainter);
+    }
     if (use_librfxcodec) {
         b.installArtifact(librfxencode);
     }
-    b.installArtifact(libsesman);
     // bin
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
@@ -222,6 +251,16 @@ fn installSbinArtifact(b: *std.Build,
     const install = b.addInstallArtifact(compile, .{
         .dest_dir = .{
             .override = .{ .custom = "sbin" },
+        },
+    });
+    b.getInstallStep().dependOn(&install.step);
+}
+
+fn installLibXrdpArtifact(b: *std.Build,
+    compile: *std.Build.Step.Compile) void {
+    const install = b.addInstallArtifact(compile, .{
+        .dest_dir = .{
+            .override = .{ .custom = "lib/xrdp" },
         },
     });
     b.getInstallStep().dependOn(&install.step);
@@ -300,6 +339,11 @@ const libipm_sources = &.{
     "xrdp/libipm/libipm_send.c",
     "xrdp/libipm/scp_application_types.c",
     "xrdp/libipm/scp.c",
+};
+
+const libpainter_sources = &.{
+    "xrdp/libpainter/src/painter.c",
+    "xrdp/libpainter/src/painter_utils.c",
 };
 
 const librfxencode_sources = &.{
