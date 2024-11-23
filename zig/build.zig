@@ -59,6 +59,7 @@ pub fn build(b: *std.Build) void {
     libxrdp.addIncludePath(b.path("."));
     libxrdp.addIncludePath(b.path("xrdp/common"));
     libxrdp.addCSourceFiles(.{ .files = libxrdp_sources });
+    libxrdp.linkLibrary(libcommon);
     // libipm
     const libipm = b.addSharedLibrary(.{
         .name = "ipm",
@@ -72,6 +73,63 @@ pub fn build(b: *std.Build) void {
     libipm.addIncludePath(b.path("."));
     libipm.addIncludePath(b.path("xrdp/common"));
     libipm.addCSourceFiles(.{ .files = libipm_sources });
+    libipm.linkLibrary(libcommon);
+    // libxup
+    const libxup = b.addSharedLibrary(.{
+        .name = "xup",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    libxup.linkLibC();
+    libxup.defineCMacro("HAVE_CONFIG_H", "1");
+    libxup.defineCMacro("CONFIG_AC_H", "1");
+    libxup.addIncludePath(b.path("."));
+    libxup.addIncludePath(b.path("xrdp/common"));
+    libxup.addCSourceFiles(.{ .files = libxup_sources });
+    libxup.linkLibrary(libcommon);
+    // libvnc
+    const libvnc = b.addSharedLibrary(.{
+        .name = "vnc",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    libvnc.linkLibC();
+    libvnc.defineCMacro("HAVE_CONFIG_H", "1");
+    libvnc.defineCMacro("CONFIG_AC_H", "1");
+    libvnc.addIncludePath(b.path("."));
+    libvnc.addIncludePath(b.path("xrdp/common"));
+    libvnc.addCSourceFiles(.{ .files = libvnc_sources });
+    libvnc.linkLibrary(libcommon);
+    // libmc
+    const libmc = b.addSharedLibrary(.{
+        .name = "mc",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    libmc.linkLibC();
+    libmc.defineCMacro("HAVE_CONFIG_H", "1");
+    libmc.defineCMacro("CONFIG_AC_H", "1");
+    libmc.addIncludePath(b.path("."));
+    libmc.addIncludePath(b.path("xrdp/common"));
+    libmc.addCSourceFiles(.{ .files = libmc_sources });
+    libmc.linkLibrary(libcommon);
+    // libxrdpapi
+    const libxrdpapi = b.addSharedLibrary(.{
+        .name = "xrdpapi",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    libxrdpapi.linkLibC();
+    libxrdpapi.defineCMacro("HAVE_CONFIG_H", "1");
+    libxrdpapi.defineCMacro("CONFIG_AC_H", "1");
+    libxrdpapi.addIncludePath(b.path("."));
+    libxrdpapi.addIncludePath(b.path("xrdp/common"));
+    libxrdpapi.addCSourceFiles(.{ .files = libxrdpapi_sources });
+    libxrdpapi.linkLibrary(libcommon);
     // libpainter
     const libpainter = b.addStaticLibrary(.{
             .name = "painter",
@@ -207,6 +265,7 @@ pub fn build(b: *std.Build) void {
     libsesman.addIncludePath(b.path("xrdp/libipm"));
     libsesman.addCSourceFiles(.{ .files = libsesman_sources });
     libsesman.linkSystemLibrary("pam");
+    libsesman.linkLibrary(libcommon);
     setExtraLibraryPaths(libsesman, target);
     // sesman
     const sesman = b.addExecutable(.{
@@ -232,6 +291,10 @@ pub fn build(b: *std.Build) void {
     installLibXrdpArtifact(b, libxrdp);
     installLibXrdpArtifact(b, libipm);
     installLibXrdpArtifact(b, libsesman);
+    installLibXrdpArtifact(b, libxup);
+    installLibXrdpArtifact(b, libvnc);
+    installLibXrdpArtifact(b, libmc);
+    installLibXrdpArtifact(b, libxrdpapi);
     if (use_libpainter) {
         b.installArtifact(libpainter);
     }
@@ -339,6 +402,24 @@ const libipm_sources = &.{
     "xrdp/libipm/libipm_send.c",
     "xrdp/libipm/scp_application_types.c",
     "xrdp/libipm/scp.c",
+};
+
+const libxup_sources = &.{
+    "xrdp/xup/xup.c",
+};
+
+const libvnc_sources = &.{
+    "xrdp/vnc/vnc.c",
+    "xrdp/vnc/vnc_clip.c",
+    "xrdp/vnc/rfb.c",
+};
+
+const libmc_sources = &.{
+    "xrdp/mc/mc.c",
+};
+
+const libxrdpapi_sources = &.{
+    "xrdp/xrdpapi/xrdpapi.c",
 };
 
 const libpainter_sources = &.{
