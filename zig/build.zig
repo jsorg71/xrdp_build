@@ -17,6 +17,36 @@ pub fn build(b: *std.Build) void {
         "enable-rfxcodec",
         "Use included librfxcodec library (default: yes)"
     ) orelse true;
+    const enable_ibus = b.option(
+        bool,
+        "enable-ibus",
+        "Allow unicode input via IBus) (default: no)"
+    ) orelse false;
+    const enable_fdkaac = b.option(
+        bool,
+        "enable-fdkaac",
+        "Build aac(audio codec) (default: no)"
+    ) orelse false;
+    const enable_opus = b.option(
+        bool,
+        "enable-opus",
+        "Build opus(audio codec) (default: no)"
+    ) orelse false;
+    const enable_mp3lame = b.option(
+        bool,
+        "enable-mp3lame",
+        "Build lame mp3(audio codec) (default: no)",
+    ) orelse false;
+    const enable_pixman = b.option(
+        bool,
+        "enable-pixman",
+        "Use pixman library (default: no)"
+    ) orelse false;
+    const enable_x264 = b.option(
+        bool,
+        "enable-x264",
+        "Use x264 library (default: no)"
+    ) orelse false;
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     // tomlc99
@@ -45,6 +75,9 @@ pub fn build(b: *std.Build) void {
     libcommon.addCSourceFiles(.{ .files = libcommon_sources });
     libcommon.linkSystemLibrary("crypto");
     libcommon.linkSystemLibrary("ssl");
+    if (!enable_pixman) {
+        libcommon.addCSourceFiles(.{ .files = &.{ "xrdp/common/pixman-region16.c", }});
+    }
     setExtraLibraryPaths(libcommon, target);
     // libxrdp
     const libxrdp = b.addSharedLibrary(.{
@@ -218,6 +251,14 @@ pub fn build(b: *std.Build) void {
         xrdp.addIncludePath(b.path("xrdp/librfxcodec/include"));
         xrdp.linkLibrary(librfxencode);
     }
+    if (enable_pixman) {
+        xrdp.defineCMacro("XRDP_PIXMAN", "1");
+        xrdp.linkSystemLibrary("pixman-1");
+    }
+    if (enable_x264) {
+        xrdp.defineCMacro("XRDP_X264", "1");
+        xrdp.linkSystemLibrary("x264");
+    }
     // waitforx
     const waitforx = b.addExecutable(.{
         .name = "waitforx",
@@ -264,8 +305,8 @@ pub fn build(b: *std.Build) void {
     libsesman.addIncludePath(b.path("xrdp/common"));
     libsesman.addIncludePath(b.path("xrdp/libipm"));
     libsesman.addCSourceFiles(.{ .files = libsesman_sources });
-    libsesman.linkSystemLibrary("pam");
     libsesman.linkLibrary(libcommon);
+    libsesman.linkSystemLibrary("pam");
     setExtraLibraryPaths(libsesman, target);
     // sesman
     const sesman = b.addExecutable(.{
@@ -285,6 +326,45 @@ pub fn build(b: *std.Build) void {
     sesman.linkLibrary(libcommon);
     sesman.linkLibrary(libsesman);
     sesman.linkLibrary(libipm);
+    // chansrv
+    const chansrv = b.addExecutable(.{
+        .name = "xrdp-chansrv",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    chansrv.linkLibC();
+    chansrv.defineCMacro("HAVE_CONFIG_H", "1");
+    chansrv.defineCMacro("CONFIG_AC_H", "1");
+    chansrv.addIncludePath(b.path("."));
+    chansrv.addIncludePath(b.path("xrdp/common"));
+    chansrv.addIncludePath(b.path("xrdp/sesman/libsesman"));
+    chansrv.addIncludePath(b.path("xrdp/sesman/chansrv"));
+    chansrv.addCSourceFiles(.{ .files = chansrv_sources });
+    if (enable_ibus) {
+        chansrv.defineCMacro("XRDP_IBUS", "1");
+        chansrv.addCSourceFiles(.{ .files = &.{ "xrdp/sesman/chansrv/input_ibus.c", }});
+        chansrv.linkSystemLibrary("ibus-1.0");
+        chansrv.linkSystemLibrary("glib-2.0");
+    }
+    if (enable_fdkaac) {
+        chansrv.defineCMacro("XRDP_FDK_AAC", "1");
+        chansrv.linkSystemLibrary("fdk-aac");
+    }
+    if (enable_opus) {
+        chansrv.defineCMacro("XRDP_OPUS", "1");
+        chansrv.linkSystemLibrary("opus");
+    }
+    if (enable_mp3lame) {
+        chansrv.defineCMacro("XRDP_MP3LAME", "1");
+        chansrv.linkSystemLibrary("mp3lame");
+    }
+    chansrv.linkLibrary(libcommon);
+    chansrv.linkLibrary(libsesman);
+    chansrv.linkSystemLibrary("x11");
+    chansrv.linkSystemLibrary("xrandr");
+    chansrv.linkSystemLibrary("xfixes");
+    setExtraLibraryPaths(chansrv, target);
     // lib/xrdp
     installLibXrdpArtifact(b, libtomlc);
     installLibXrdpArtifact(b, libcommon);
@@ -307,6 +387,7 @@ pub fn build(b: *std.Build) void {
     // sbin
     installSbinArtifact(b, xrdp);
     installSbinArtifact(b, sesman);
+    installSbinArtifact(b, chansrv);
 }
 
 fn installSbinArtifact(b: *std.Build,
@@ -369,7 +450,6 @@ const libcommon_sources = &.{
     "xrdp/common/log.c",
     "xrdp/common/os_calls.c",
     "xrdp/common/parse.c",
-    "xrdp/common/pixman-region16.c",
     "xrdp/common/scancode.c",
     "xrdp/common/ssl_calls.c",
     "xrdp/common/string_calls.c",
@@ -529,4 +609,22 @@ const sesman_sources = &.{
     "xrdp/sesman/sesman.c",
     "xrdp/sesman/session_list.c",
     "xrdp/sesman/sig.c",
+};
+
+const chansrv_sources = &.{
+    "xrdp/sesman/chansrv/audin.c",
+    "xrdp/sesman/chansrv/chansrv.c",
+    "xrdp/sesman/chansrv/chansrv_common.c",
+    "xrdp/sesman/chansrv/chansrv_config.c",
+    "xrdp/sesman/chansrv/chansrv_fuse.c",
+    "xrdp/sesman/chansrv/chansrv_xfs.c",
+    "xrdp/sesman/chansrv/clipboard.c",
+    "xrdp/sesman/chansrv/clipboard_file.c",
+    "xrdp/sesman/chansrv/devredir.c",
+    "xrdp/sesman/chansrv/irp.c",
+    "xrdp/sesman/chansrv/rail.c",
+    "xrdp/sesman/chansrv/smartcard.c",
+    "xrdp/sesman/chansrv/smartcard_pcsc.c",
+    "xrdp/sesman/chansrv/sound.c",
+    "xrdp/sesman/chansrv/xcommon.c",
 };
