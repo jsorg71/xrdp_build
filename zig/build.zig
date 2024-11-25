@@ -365,6 +365,20 @@ pub fn build(b: *std.Build) void {
     chansrv.linkSystemLibrary("xrandr");
     chansrv.linkSystemLibrary("xfixes");
     setExtraLibraryPaths(chansrv, target);
+    // xrdp-dis
+    const xrdp_dis = b.addExecutable(.{
+        .name = "xrdp-dis",
+        .target = target,
+        .optimize = optimize,
+        .strip = do_strip,
+    });
+    xrdp_dis.linkLibC();
+    xrdp_dis.defineCMacro("HAVE_CONFIG_H", "1");
+    xrdp_dis.defineCMacro("CONFIG_AC_H", "1");
+    xrdp_dis.addIncludePath(b.path("."));
+    xrdp_dis.addIncludePath(b.path("xrdp/common"));
+    xrdp_dis.addCSourceFiles(.{ .files = &.{ "xrdp/sesman/tools/dis.c", }});
+    xrdp_dis.linkLibrary(libcommon);
     // lib/xrdp
     installLibXrdpArtifact(b, libtomlc);
     installLibXrdpArtifact(b, libcommon);
@@ -384,6 +398,7 @@ pub fn build(b: *std.Build) void {
     // bin
     b.installArtifact(waitforx);
     b.installArtifact(keygen);
+    b.installArtifact(xrdp_dis);
     // sbin
     installSbinArtifact(b, xrdp);
     installSbinArtifact(b, sesman);
